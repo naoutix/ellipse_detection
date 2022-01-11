@@ -5,36 +5,38 @@ L = taille_ecran(3);
 H = taille_ecran(4);
 
 %% Paramètres :
-R = 10;                                         % Rayon des disques 10
-beta = 1.0;                                     % Facteur de distance
-S =130;                                         % seuil de bon postionnement 
+R = 10;                                         % Rayon des disques 10 ( dans le cas ellipitique a = R ,b = sqrt(2)*R)
+beta = 1.0;                                     % Facteur de prise en compte des distances
+S =130;                                         % seuil de bon positionnement 
 gamma = 5.0;                                    % parametre sigmoide
 T =0.1;                                         % Temperature
-lambda = 100.0;                                 % facteur de poisson
-alpha =0.99;                                    % coefficient de croissance
-rose = [253 108 158]/255;
+lambda = 50.0;                                 % facteur de poisson
+alpha =0.99;                                    % coefficient de decroissance
+N=10;                                            % Nb de cercle initaux
 k_max = 5000;                                   % nb d'iteration max
 
-N=2;                                            % Nb de cercle initaux
-
-nb_points_disque = 30;                          % Affichage cercle
-increment_angulaire = 2*pi/nb_points_disque;    % icrement d'affichage
-theta = 0:increment_angulaire:2*pi;             % Liste des thetas
+nb_points_disque = 30;                          % precision des ellipse
+Pourcentage_point_interne_tol = 25;             % Pourcentage de chevauchement des ellipses
+rose = [253 108 158]/255;                       % couleur 
 
 
 nb_affichages = 1000;                               % affichage frame
 pas_entre_affichages = floor(k_max/nb_affichages);
 temps_pause = 0.0005;
+
+distmax =  round(nb_points_disque * Pourcentage_point_interne_tol/100);  % Nombre de point maximal de chevauchement
 %% Lecture et affichage de l'image :
 I = imread('colonie.png');
 I = rgb2gray(I);
 I = double(I);
 I = I(1:400,100:450);
+%I = imbinarize(I);
 figure('Name',['Detection de ' num2str(N) ' flamants roses'],'Position',[0.25*L,0,0.75*L,0.5*H]);
 [nb_lignes,nb_colonnes] = size(I);
 
 %% Tirage aléatoire d'une configuration initiale et calcul des niveaux de gris moyens :
 c = zeros(N,3);
+Points = zeros(3,nb_points_disque,N);
 I_moyen_disques = zeros(N,1);
 U_disques = zeros(N,1);
 for i = 1:N
@@ -44,11 +46,12 @@ for i = 1:N
 	I_moyen_disques(i) = calcul_I_moyen_ellipse(I,c_i,R);
     somme=0;
     paramsC_i = [c(i,1),c(i,2),R,sqrt(2)*R,c(i,3)];
-    PtsC_i = ellipsepoint(paramsC_i);
+    PtsC_i = ellipsepoint(paramsC_i,nb_points_disque);
+    Points(:,:,i)=PtsC_i;
     for j = 1:N
         paramsC_j = [c(j,1),c(j,2),R,sqrt(2)*R,c(j,3)];
         dist = distance_ellipse(paramsC_j,PtsC_i);
-        if dist > 7
+        if dist > distmax
            somme = somme + 1;
         end
     end
@@ -67,15 +70,8 @@ axis off;
 colormap gray;
 hold on;
 for j = 1:N
-            a= R;
-            b = sqrt(2)*R;
-			x_prime = a*cos(theta);
-			y_prime = b*sin(theta);
-            angle = c(j,3);
-            x_affich = x_prime*cos(angle)-y_prime*sin(angle);
-            y_affich = x_prime*sin(angle)+y_prime*cos(angle);
-            x_affich = c(j,1)+x_affich;
-            y_affich = c(j,2)+y_affich;
+            x_affich = Points(1,:,j);
+            y_affich = Points(2,:,j);
 			indices = find(x_affich>0 & x_affich<nb_colonnes & y_affich>0 & y_affich<nb_lignes);
 			plot(x_affich(indices),y_affich(indices),'Color',rose,'LineWidth',3);
 end
@@ -97,14 +93,18 @@ while continuer
     %% Tirage des nouveaux disques
     c_anc = c;
     nouvN = poissrnd(lambda);
-    
+    [nl,nc,N_anc] = size(Points);
+    Points2 = zeros(nl,nc,N_anc+nouvN);
+    Points2(:,:,1:N_anc)=Points;
     for i=1:nouvN
         % Tirage aléatoire d'un nouveau disque et calcul du niveau de gris moyen :
         c_i = [nb_colonnes*rand nb_lignes*rand,rand*2*pi];
         c = [c; c_i];
+        paramsC_i = [c_i(1),c_i(2),R,sqrt(2)*R,c_i(3)];
+        Points2(:,:,N_anc+i)=ellipsepoint(paramsC_i,nb_points_disque);
         I_moyen_disques = [I_moyen_disques ; calcul_I_moyen_ellipse(I,c_i,R)];
     end
-    
+    Points = Points2;
  
     
     %% Calcul de l'energie ind
@@ -117,6 +117,7 @@ while continuer
     [U_i, ind] = sort(U_i, 'desc');
     
     c = c(ind,:);
+    Points = Points(:,:,ind);
     I_moyen_disques = I_moyen_disques(ind,:);
     
     %% morts des cercles
@@ -127,15 +128,12 @@ while continuer
        
         for j=1:size(c,1)
             paramsC_j = [c(j,1),c(j,2),R,sqrt(2)*R,c(j,3)];
-            PtsC_j = ellipsepoint(paramsC_j);
             for l=1:size(c,1)
                 if j ~= l
                     dist1 = sqrt((c(j,1)-c(l,1))^2 + (c(j,2)-c(l,2))^2);
                     if dist1 <= 2*sqrt(2)*R
-                        paramsC_i = [c(l,1),c(l,2),R,sqrt(2)*R,c(l,3)];
-                        dist = distance_ellipse(paramsC_i,PtsC_j);
-                        if dist> 7 
-                            disp(dist);
+                        dist = distance_ellipse(paramsC_j,Points(:,:,l));
+                        if dist> distmax
                             somme = somme +1;
                             if j~=i && l~=i
                                 sum_Ci = sum_Ci +1;
@@ -152,6 +150,7 @@ while continuer
         if rand < proba
             c(i,:) =[];
             U_i(i) =[];
+            Points(:,:,i)=[];
             I_moyen_disques(i) = [];
             i = i - 1;
         end
@@ -175,20 +174,12 @@ while continuer
     colormap gray;
     hold on;
     for j = 1:size(c,1)
-            a= R;
-            b = sqrt(2)*R;
-			x_prime = a*cos(theta);
-			y_prime = b*sin(theta);
-            angle = c(j,3);
-            x_affich = x_prime*cos(angle)-y_prime*sin(angle);
-            y_affich = x_prime*sin(angle)+y_prime*cos(angle);
-            x_affich = c(j,1)+x_affich;
-            y_affich = c(j,2)+y_affich;
+            x_affich = Points(1,:,j);
+            y_affich = Points(2,:,j);
         indices = find(x_affich>0 & x_affich<nb_colonnes & y_affich>0 & y_affich<nb_lignes);
         plot(x_affich(indices),y_affich(indices),'Color',rose,'LineWidth',3);
         title(['Detection en cours : ' num2str(size(c,1)) ' flamants roses trouvés']);
     end
-    pause(temps_pause);
 	
 
 	% Courbe d'évolution du niveau de gris moyen :
@@ -207,4 +198,5 @@ while continuer
     k=k+1;
     disp("Nombre de flamants")
     disp(size(c,1))
+    pause(temps_pause);
 end
