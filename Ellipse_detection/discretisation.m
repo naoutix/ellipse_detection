@@ -6,9 +6,9 @@ nb_points_disque = 30;
 nx =100;
 ny =100;
 nTheta = 100;
-x = linspace(-sqrt(2)*R,sqrt(2)*R,nx);
-y = linspace(-sqrt(2)*R,sqrt(2)*R,ny);
-theta = linspace(0,2*pi,ntheta);
+x = linspace(-2*sqrt(2)*R,2*sqrt(2)*R,nx);
+y = linspace(-2*sqrt(2)*R,2*sqrt(2)*R,ny);
+theta = linspace(0,2*pi,nTheta);
 
 Res = zeros(100,100,100);
 for i =1:100
