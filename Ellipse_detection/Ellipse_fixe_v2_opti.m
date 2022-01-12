@@ -4,6 +4,7 @@ taille_ecran = get(0,'ScreenSize');
 L = taille_ecran(3);
 H = taille_ecran(4);
 
+load('discretisation.mat')
 %% Paramètres :
 R = 10;                                         % Rayon des disques 10 ( dans le cas ellipitique a = R ,b = sqrt(2)*R)
 beta = 1.0;                                     % Facteur de prise en compte des distances
@@ -50,7 +51,11 @@ for i = 1:N
     Points(:,:,i)=PtsC_i;
     for j = 1:N
         paramsC_j = [c(j,1),c(j,2),R,sqrt(2)*R,c(j,3)];
-        dist = distance_ellipse(paramsC_j,PtsC_i);
+        %dist = max(distance_ellipse(paramsC_j,PtsC_i),distance_ellipse(paramsC_i,ellipsepoint(paramsC_j,nb_points_disque)));
+        x_interpol = round((paramsC_i(1)-paramC_j(1)-x(1))/((x(nx)-x(1))/nx)) +1;
+        y_interpol = round((paramsC_i(2)-paramC_j(2)-y(1))/((y(ny)-y(1))/ny)) +1;
+        theta_interpol = round((abs(paramsC_i(5)-paramC_j(5))-theta(1))/((theta(nTheta)-theta(1))/nTheta)) +1;
+        dist = Res(x_interpol,y_interpol,theta_interpol);
         if dist > distmax
            somme = somme + 1;
         end
@@ -129,10 +134,15 @@ while continuer
         for j=1:size(c,1)
             paramsC_j = [c(j,1),c(j,2),R,sqrt(2)*R,c(j,3)];
             for l=1:size(c,1)
+                paramsC_l = [c(l,1),c(l,2),R,sqrt(2)*R,c(l,3)];
                 if j ~= l
                     dist1 = sqrt((c(j,1)-c(l,1))^2 + (c(j,2)-c(l,2))^2);
                     if dist1 <= 2*sqrt(2)*R
-                        dist = distance_ellipse(paramsC_j,Points(:,:,l));
+                        %dist = max(distance_ellipse(paramsC_j,Points(:,:,l)),distance_ellipse(paramsC_l,Points(:,:,j)));
+                            x_interpol = round((paramsC_i(1)-paramC_j(1)-x(1))/((x(nx)-x(1))/nx)) +1;
+                            y_interpol = round((paramsC_i(2)-paramC_j(2)-y(1))/((y(ny)-y(1))/ny)) +1;
+                            theta_interpol = round((abs(paramsC_i(5)-paramC_j(5))-theta(1))/((theta(nTheta)-theta(1))/nTheta)) +1;
+                            dist = Res(x_interpol,y_interpol,theta_interpol);
                         if dist> distmax
                             somme = somme +1;
                             if j~=i && l~=i

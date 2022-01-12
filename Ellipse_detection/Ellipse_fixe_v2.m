@@ -50,7 +50,8 @@ for i = 1:N
     Points(:,:,i)=PtsC_i;
     for j = 1:N
         paramsC_j = [c(j,1),c(j,2),R,sqrt(2)*R,c(j,3)];
-        dist = distance_ellipse(paramsC_j,PtsC_i);
+        dist = max(distance_ellipse(paramsC_j,PtsC_i),distance_ellipse(paramsC_i,ellipsepoint(paramsC_j,nb_points_disque)));
+
         if dist > distmax
            somme = somme + 1;
         end
@@ -129,10 +130,11 @@ while continuer
         for j=1:size(c,1)
             paramsC_j = [c(j,1),c(j,2),R,sqrt(2)*R,c(j,3)];
             for l=1:size(c,1)
+                paramsC_l = [c(l,1),c(l,2),R,sqrt(2)*R,c(l,3)];
                 if j ~= l
                     dist1 = sqrt((c(j,1)-c(l,1))^2 + (c(j,2)-c(l,2))^2);
                     if dist1 <= 2*sqrt(2)*R
-                        dist = distance_ellipse(paramsC_j,Points(:,:,l));
+                        dist = max(distance_ellipse(paramsC_j,Points(:,:,l)),distance_ellipse(paramsC_l,Points(:,:,j)));
                         if dist> distmax
                             somme = somme +1;
                             if j~=i && l~=i
